@@ -254,6 +254,24 @@ export function preprocessEmbeddedTemplates(
 
   let output = s.toString();
 
+  // find <style>...</style> and replace with a function that returns the string
+
+  if (relativePath.endsWith('.gjs') || relativePath.endsWith('.gts')) {
+    const styleRegex = /<style>([\s\S]*?)<\/style>/g;
+    let styleMatch;
+
+    while ((styleMatch = styleRegex.exec(output))) {
+      const styleStart = styleMatch.index;
+      const styleEnd = styleMatch.index + styleMatch[0].length;
+      const styleContent = styleMatch[1];
+
+      const styleReplacement = `__GLIMMER_STYLES(\`${styleContent}\`);`;
+
+      output =
+        output.slice(0, styleStart) + styleReplacement + output.slice(styleEnd);
+    }
+  }
+
   const hasChanges = template !== output;
   if (includeSourceMaps && hasChanges) {
     const { dir, name } = path.parse(relativePath);
