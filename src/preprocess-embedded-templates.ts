@@ -7,6 +7,7 @@ import {
   ParseTemplatesOptions,
   TemplateMatch,
 } from './parse-templates';
+import { writeFileSync } from 'fs';
 
 interface PreprocessOptionsEager {
   getTemplateLocals: GetTemplateLocals;
@@ -260,15 +261,15 @@ export function preprocessEmbeddedTemplates(
     const styleRegex = /<style>([\s\S]*?)<\/style>/g;
     let styleMatch;
 
+    const { dir, name } = path.parse(relativePath);
     while ((styleMatch = styleRegex.exec(output))) {
       const styleStart = styleMatch.index;
       const styleEnd = styleMatch.index + styleMatch[0].length;
       const styleContent = styleMatch[1];
 
-      const styleReplacement = `__GLIMMER_STYLES(\`${styleContent}\`);`;
+      writeFileSync(styleContent, `${dir}/${name}.css`);
 
-      output =
-        output.slice(0, styleStart) + styleReplacement + output.slice(styleEnd);
+      output = output.slice(0, styleStart) + output.slice(styleEnd);
     }
   }
 
