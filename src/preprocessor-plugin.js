@@ -3,6 +3,8 @@ const util = require('../lib/util');
 const {
   preprocessEmbeddedTemplates,
 } = require('../lib/preprocess-embedded-templates');
+const mergeTrees = require('broccoli-merge-trees');
+var removeEmpty = require('broccoli-empty-files');
 
 /**
  * This preprocessor operates on source files as raw strings, converting
@@ -93,8 +95,45 @@ module.exports = class TemplateImportPreprocessor {
       }
     );
 
-    return stew.rename(compiled, (name) => {
+    const gjs = stew.find(tree, '**/*.gjs');
+    const emitedStyles = [];
+
+    const compiledStyles = stew.map(gjs, (content, relativePath) => {
+      const styleRegex = /<style>([\s\S]*?)<\/style>/g;
+      let styleMatch;
+      const styles = [];
+      while ((styleMatch = styleRegex.exec(content))) {
+        const styleContent = styleMatch[1];
+        styles.push(styleContent);
+      }
+      if (styles.length) {
+        emitedStyles.push(
+          relativePath.replace(/\.gjs$/, '.css').replace(/\.gts$/, '.css')
+        );
+        return styles.join('\n\n');
+      } else {
+        return '';
+      }
+    });
+
+    const noEmpty = stew.find(
+      compiledStyles,
+      (content) => content.trim().length
+    );
+    const noEmptyOrWhitespaceFiles = stew.rm(noEmpty);
+
+    const renamed = stew.rename(noEmptyOrWhitespaceFiles, (name) => {
+      return name.replace(/\.gjs$/, '.css').replace(/\.gts$/, '.css');
+    });
+
+    const gjs2 = stew.rm(renamed, (relativePath) => {
+      return !emitedStyles.includes(relativePath);
+    });
+
+    const firstTree = stew.rename(compiled, (name) => {
       return name.replace(/\.gjs$/, '.js').replace(/\.gts$/, '.ts');
     });
+    const newTree = mergeTrees([firstTree, gjs2]);
+    return newTree;
   }
 };

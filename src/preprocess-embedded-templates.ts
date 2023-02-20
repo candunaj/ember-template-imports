@@ -7,7 +7,6 @@ import {
   ParseTemplatesOptions,
   TemplateMatch,
 } from './parse-templates';
-import { writeFileSync } from 'fs';
 
 interface PreprocessOptionsEager {
   getTemplateLocals: GetTemplateLocals;
@@ -255,22 +254,10 @@ export function preprocessEmbeddedTemplates(
 
   let output = s.toString();
 
-  // find <style>...</style> and replace with a function that returns the string
-
+  // find <style>...</style> and remove them
   if (relativePath.endsWith('.gjs') || relativePath.endsWith('.gts')) {
     const styleRegex = /<style>([\s\S]*?)<\/style>/g;
-    let styleMatch;
-
-    const { dir, name } = path.parse(relativePath);
-    while ((styleMatch = styleRegex.exec(output))) {
-      const styleStart = styleMatch.index;
-      const styleEnd = styleMatch.index + styleMatch[0].length;
-      const styleContent = styleMatch[1];
-
-      writeFileSync(styleContent, `${dir}/${name}.css`);
-
-      output = output.slice(0, styleStart) + output.slice(styleEnd);
-    }
+    output = output.replace(styleRegex, '');
   }
 
   const hasChanges = template !== output;
